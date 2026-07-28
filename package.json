@@ -1,6 +1,6 @@
 {
   "name": "mcp-udacity-commit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "MCP server that validates and formats git commit messages per the Udacity Git Commit Message Style Guide.",
   "type": "module",
   "license": "MIT",
@@ -29,9 +29,11 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "tsc && chmod 755 build/index.js",
+    "build": "rm -rf build && tsc && chmod 755 build/index.js",
     "start": "node build/index.js",
-    "prepublishOnly": "npm run build",
+    "pretest": "npm run build",
+    "test": "node --test test/*.test.mjs",
+    "prepublishOnly": "npm test",
     "test:client": "node test-client.mjs"
   },
   "dependencies": {
