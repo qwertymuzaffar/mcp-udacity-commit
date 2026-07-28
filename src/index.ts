@@ -3,9 +3,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
-import { STYLE_GUIDE, validate, formatMessage } from "./lint.js";
+import { STYLE_GUIDE, BRANCH_GUIDE, validate, formatMessage, validateBranch } from "./lint.js";
 
-const VERSION = "1.0.2";
+const VERSION = "1.1.0";
 
 export function createServer(): McpServer {
   const server = new McpServer({ name: "udacity-commit", version: VERSION });
@@ -19,6 +19,17 @@ export function createServer(): McpServer {
       mimeType: "text/markdown",
     },
     async (uri) => ({ contents: [{ uri: uri.href, text: STYLE_GUIDE }] })
+  );
+
+  server.registerResource(
+    "branch-naming",
+    "udacity://branch-naming",
+    {
+      title: "Branch Naming (companion convention)",
+      description: "type/kebab-case branch-naming rules that pair with the commit style.",
+      mimeType: "text/markdown",
+    },
+    async (uri) => ({ contents: [{ uri: uri.href, text: BRANCH_GUIDE }] })
   );
 
   server.registerTool(
@@ -88,6 +99,37 @@ export function createServer(): McpServer {
         content: [{ type: "text", text: `${message}\n\n--- ${note}` }],
         structuredContent,
       };
+    }
+  );
+
+  server.registerTool(
+    "validate_branch_name",
+    {
+      title: "Validate a git branch name",
+      description:
+        "Check a git branch name against the companion type/kebab-case convention " +
+        '(e.g. "feat/add-dark-mode"). Returns whether it is compliant plus any problems ' +
+        "(violations) and warnings (hints). Base branches like main/master are exempt.",
+      inputSchema: { name: z.string().describe('The branch name to check, e.g. "feat/add-dark-mode"') },
+      outputSchema: {
+        valid: z.boolean(),
+        problems: z.array(z.string()),
+        warnings: z.array(z.string()),
+      },
+    },
+    async ({ name }) => {
+      const r = validateBranch(name);
+      const text = [
+        r.valid ? "✅ Compliant branch name." : "❌ Not compliant.",
+        ...r.problems.map((p) => `  • ${p}`),
+        ...r.warnings.map((w) => `  ⚠ ${w}`),
+      ].join("\n");
+      const structuredContent: Record<string, unknown> = {
+        valid: r.valid,
+        problems: r.problems,
+        warnings: r.warnings,
+      };
+      return { content: [{ type: "text", text }], structuredContent };
     }
   );
 

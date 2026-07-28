@@ -4,7 +4,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { validate, formatMessage, wrap, width, SUBJECT_MAX, BODY_WRAP } from "../build/lint.js";
+import {
+  validate,
+  formatMessage,
+  validateBranch,
+  wrap,
+  width,
+  SUBJECT_MAX,
+  BODY_WRAP,
+  BRANCH_MAX,
+} from "../build/lint.js";
 
 test("a well-formed message is compliant", () => {
   const r = validate("feat: Add dark mode toggle");
@@ -91,4 +100,74 @@ test("wrap respects the width and preserves paragraph breaks", () => {
 test("exported limits match the guide", () => {
   assert.equal(SUBJECT_MAX, 50);
   assert.equal(BODY_WRAP, 72);
+  assert.equal(BRANCH_MAX, 50);
+});
+
+test("branch: a well-formed type/kebab-case name is compliant", () => {
+  for (const name of ["feat/add-dark-mode", "fix/duplicate-auth-refresh", "chore/bump-deps", "test/cover-edge-case-42"]) {
+    const r = validateBranch(name);
+    assert.equal(r.valid, true, `${name}: ${r.problems.join("; ")}`);
+    assert.deepEqual(r.problems, []);
+  }
+});
+
+test("branch: missing type/ prefix fails", () => {
+  const r = validateBranch("add-dark-mode");
+  assert.equal(r.valid, false);
+  assert.ok(r.problems.some((p) => /type\/description/.test(p)));
+});
+
+test("branch: unknown type fails with the allowed list", () => {
+  const r = validateBranch("wip/do-stuff");
+  assert.equal(r.valid, false);
+  assert.ok(r.problems.some((p) => /Unknown type/.test(p)));
+});
+
+test("branch: non-kebab descriptions are flagged with a specific reason", () => {
+  assert.ok(validateBranch("feat/Add-Dark-Mode").problems.some((p) => /lowercase kebab-case/.test(p)));
+  assert.ok(validateBranch("feat/add_dark_mode").problems.some((p) => /hyphens, not spaces or underscores/.test(p)));
+  assert.ok(validateBranch("feat/add dark mode").problems.some((p) => /hyphens, not spaces or underscores/.test(p)));
+  // leading / trailing / double hyphens fall back to the general kebab message
+  assert.ok(validateBranch("feat/-lead").problems.some((p) => /kebab-case/.test(p)));
+  assert.ok(validateBranch("feat/trail-").problems.some((p) => /kebab-case/.test(p)));
+  assert.ok(validateBranch("feat/double--hyphen").problems.some((p) => /kebab-case/.test(p)));
+});
+
+test("branch: extra slashes in the description are rejected", () => {
+  const r = validateBranch("feat/add/dark-mode");
+  assert.equal(r.valid, false);
+  assert.ok(r.problems.some((p) => /single "\/"/.test(p)));
+});
+
+test("branch: empty description after the type fails", () => {
+  const r = validateBranch("feat/");
+  assert.equal(r.valid, false);
+  assert.ok(r.problems.some((p) => /Description after the type is empty/.test(p)));
+});
+
+test("branch: base branches are exempt (valid with a note)", () => {
+  for (const name of ["main", "master", "dev", "develop", "trunk", "release/1.2.0"]) {
+    const r = validateBranch(name);
+    assert.equal(r.valid, true, `${name}: ${r.problems.join("; ")}`);
+    assert.ok(r.warnings.some((w) => /base branch/.test(w)));
+  }
+});
+
+test("branch: over-length name is a warning, not a failure", () => {
+  const name = "feat/" + "a".repeat(BRANCH_MAX); // well over the limit
+  const r = validateBranch(name);
+  assert.equal(r.valid, true);
+  assert.ok(r.warnings.some((w) => /keep it 50 or fewer/.test(w)));
+});
+
+test("branch: leading/trailing whitespace is flagged", () => {
+  const r = validateBranch(" feat/add-dark-mode");
+  assert.equal(r.valid, false);
+  assert.ok(r.problems.some((p) => /whitespace/.test(p)));
+});
+
+test("branch: empty input fails cleanly", () => {
+  const r = validateBranch("   ");
+  assert.equal(r.valid, false);
+  assert.ok(r.problems.some((p) => /empty/.test(p)));
 });

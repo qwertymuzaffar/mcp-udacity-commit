@@ -11,6 +11,13 @@
 
 export const SUBJECT_MAX = 50;
 export const BODY_WRAP = 72;
+export const BRANCH_MAX = 50;
+
+/**
+ * Long-lived / protected branches that are exempt from the feature-branch
+ * `type/description` rule. `release/*` is handled separately by prefix.
+ */
+export const BASE_BRANCHES = new Set<string>(["main", "master", "dev", "develop", "trunk"]);
 
 export const TYPES: Record<string, string> = {
   feat: "A new feature",
@@ -90,6 +97,30 @@ ${Object.entries(TYPES)
 - References issue-tracker IDs: \`Resolves: #123\`, \`See also: #456, #789\`
 
 _Lengths are counted in Unicode code points._
+`;
+
+export const BRANCH_GUIDE = `# Branch naming (companion convention)
+
+Not part of the official Udacity *commit-message* guide, but a natural
+companion: name feature branches after the change they carry, reusing the
+same commit \`type\` set.
+
+    type/kebab-case-description
+
+## Rules
+- \`type/\` prefix — one of: ${Object.keys(TYPES).join(", ")}
+- A single \`/\` separates the type from the description
+- Description is **kebab-case**: lowercase letters and digits joined by single
+  hyphens (\`feat/add-dark-mode\`, not \`feat/Add_Dark_Mode\`)
+- No spaces, underscores, uppercase, or leading/trailing/double hyphens
+- Keep it short — ${BRANCH_MAX} characters or fewer (a hint, not a hard limit)
+
+## Examples
+- \`feat/add-dark-mode\`
+- \`fix/duplicate-auth-refresh\`
+- \`chore/bump-deps\`
+
+Base branches (${[...BASE_BRANCHES].join(", ")}, \`release/*\`) are exempt.
 `;
 
 /** Length in Unicode code points (not UTF-16 code units). */
@@ -232,4 +263,69 @@ export function formatMessage(input: FormatInput): { message: string; report: Re
   if (input.footer?.trim()) parts.push("", input.footer.trim());
   const message = parts.join("\n");
   return { message, report: validate(message) };
+}
+
+/** Kebab-case: lowercase words (letters/digits) joined by single hyphens. */
+const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+/**
+ * Validate a git branch name against the companion `type/kebab-case`
+ * convention. Base/long-lived branches (main, master, …, release/*) are
+ * accepted as-is with a note, since the feature-branch rule doesn't apply.
+ */
+export function validateBranch(name: string): Report {
+  const problems: string[] = [];
+  const warnings: string[] = [];
+
+  const branch = name.trim();
+  if (!branch) {
+    return { valid: false, problems: ["Branch name is empty."], warnings };
+  }
+  if (branch !== name) {
+    problems.push("Branch name has leading/trailing whitespace.");
+  }
+
+  // Base / long-lived branches are exempt from the feature-branch rule.
+  if (BASE_BRANCHES.has(branch) || /^release\/.+/.test(branch)) {
+    warnings.push(`"${branch}" is a base branch — feature-branch naming rules don't apply.`);
+    return { valid: problems.length === 0, problems, warnings };
+  }
+
+  const slash = branch.indexOf("/");
+  if (slash === -1) {
+    problems.push(`Branch must follow "type/description". Got: "${branch}".`);
+    return { valid: false, problems, warnings };
+  }
+
+  const type = branch.slice(0, slash);
+  const description = branch.slice(slash + 1);
+
+  if (!TYPES[type]) {
+    problems.push(`Unknown type "${type}". Use one of: ${Object.keys(TYPES).join(", ")}.`);
+  }
+
+  if (!description) {
+    problems.push("Description after the type is empty.");
+  } else if (description.includes("/")) {
+    problems.push(
+      `Use a single "/" after the type; the description must not contain "/". Got: "${description}".`
+    );
+  } else if (!KEBAB.test(description)) {
+    // Give the most specific reason we can, else a general kebab-case message.
+    if (/[A-Z]/.test(description)) {
+      problems.push(`Description must be lowercase kebab-case. Got: "${description}".`);
+    } else if (/[_ ]/.test(description)) {
+      problems.push("Use hyphens, not spaces or underscores, to separate words.");
+    } else {
+      problems.push(
+        `Description must be kebab-case: lowercase words joined by single hyphens. Got: "${description}".`
+      );
+    }
+  }
+
+  if (width(branch) > BRANCH_MAX) {
+    warnings.push(`Branch name is ${width(branch)} chars; keep it ${BRANCH_MAX} or fewer.`);
+  }
+
+  return { valid: problems.length === 0, problems, warnings };
 }

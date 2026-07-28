@@ -48,8 +48,10 @@ claude mcp add udacity-commit -- node "$(pwd)/build/index.js"
 | Primitive | Name | Purpose |
 | --- | --- | --- |
 | Resource | `udacity://commit-styleguide` | The style-guide rules, as markdown |
+| Resource | `udacity://branch-naming` | The companion `type/kebab-case` branch-naming rules, as markdown |
 | Tool | `validate_commit_message` | Checks a message against every rule (type, ≤50-char subject, capitalization, no trailing period, blank line, ≤72-char body wrap) |
 | Tool | `format_commit_message` | Builds a compliant message from `type` + `subject` + optional `body`/`footer` |
+| Tool | `validate_branch_name` | Checks a branch name against the companion `type/kebab-case` convention (e.g. `feat/add-dark-mode`); base branches like `main` are exempt |
 
 ## Example
 
@@ -76,6 +78,16 @@ Resolves: #142
 "Fixed the login bug."  →  ❌ Not compliant.
   • Subject must follow "type: Subject".
   • Subject must not end with a period.
+```
+
+`validate_branch_name` enforces the companion `type/kebab-case` convention:
+
+```text
+"feat/add-dark-mode"     →  ✅ Compliant branch name.
+"Feature/Add_Dark_Mode"  →  ❌ Not compliant.
+  • Unknown type "Feature". Use one of: feat, fix, docs, style, refactor, test, chore.
+  • Description must be lowercase kebab-case. Got: "Add_Dark_Mode".
+"main"                   →  ✅ (base branch — feature-branch rules don't apply)
 ```
 
 ## Develop
