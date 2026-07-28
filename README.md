@@ -9,6 +9,40 @@ An [MCP](https://modelcontextprotocol.io) server that validates and formats git
 commit messages according to the
 [Udacity Git Commit Message Style Guide](https://udacity.github.io/git-styleguide/).
 
+## Install
+
+One line — paste it into your terminal:
+
+```bash
+claude mcp add udacity-commit -- npx -y mcp-udacity-commit
+```
+
+For Claude Desktop, add to `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "udacity-commit": {
+      "command": "npx",
+      "args": ["-y", "mcp-udacity-commit"]
+    }
+  }
+}
+```
+
+<details>
+<summary>Install from source</summary>
+
+```bash
+git clone https://github.com/qwertymuzaffar/mcp-udacity-commit
+cd mcp-udacity-commit
+npm install
+npm run build
+claude mcp add udacity-commit -- node "$(pwd)/build/index.js"
+```
+
+</details>
+
 ## What it exposes
 
 | Primitive | Name | Purpose |
@@ -42,35 +76,6 @@ Resolves: #142
 "Fixed the login bug."  →  ❌ Not compliant.
   • Subject must follow "type: Subject".
   • Subject must not end with a period.
-```
-
-## Install (published package)
-
-```bash
-claude mcp add udacity-commit -- npx -y mcp-udacity-commit
-```
-
-For Claude Desktop, add to `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "udacity-commit": {
-      "command": "npx",
-      "args": ["-y", "mcp-udacity-commit"]
-    }
-  }
-}
-```
-
-## Install from source
-
-```bash
-git clone https://github.com/qwertymuzaffar/mcp-udacity-commit
-cd mcp-udacity-commit
-npm install
-npm run build
-claude mcp add udacity-commit -- node "$(pwd)/build/index.js"
 ```
 
 ## Develop
