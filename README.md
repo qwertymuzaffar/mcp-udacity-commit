@@ -86,17 +86,6 @@ npm run build          # → build/index.js
 npm run test:client    # spawns the server and exercises the tools
 ```
 
-## Publish
-
-```bash
-# 1. npm
-npm publish --access public
-
-# 2. MCP Registry (after npm publish)
-mcp-publisher login github
-mcp-publisher publish
-```
-
 ## License
 
 MIT
