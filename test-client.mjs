@@ -34,5 +34,12 @@ const formatted = await client.callTool({
 console.log("\n[format — from parts]");
 console.log(formatted.content[0].text);
 
+const branch = await client.callTool({
+  name: "validate_branch_name",
+  arguments: { name: "Feature/Add_Dark_Mode" },
+});
+console.log("\n[validate branch — intentionally bad name]");
+console.log(branch.content[0].text);
+
 await client.close();
 console.log("\n✅ end-to-end check passed");
