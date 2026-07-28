@@ -32,7 +32,7 @@
     "build": "rm -rf build && tsc && chmod 755 build/index.js",
     "start": "node build/index.js",
     "pretest": "npm run build",
-    "test": "node --test test/",
+    "test": "node --test test/*.test.mjs",
     "prepublishOnly": "npm test",
     "test:client": "node test-client.mjs"
   },
