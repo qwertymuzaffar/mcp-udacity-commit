@@ -122,7 +122,7 @@ function validate(message: string): Report {
   return { valid: problems.length === 0, problems, warnings };
 }
 
-const server = new McpServer({ name: "udacity-commit", version: "1.0.0" });
+const server = new McpServer({ name: "udacity-commit", version: "1.0.1" });
 
 server.registerResource(
   "styleguide",

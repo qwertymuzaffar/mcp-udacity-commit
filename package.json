@@ -1,6 +1,6 @@
 {
   "name": "mcp-udacity-commit",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server that validates and formats git commit messages per the Udacity Git Commit Message Style Guide.",
   "type": "module",
   "license": "MIT",
