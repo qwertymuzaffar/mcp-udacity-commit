@@ -146,11 +146,30 @@ test("branch: empty description after the type fails", () => {
 });
 
 test("branch: base branches are exempt (valid with a note)", () => {
-  for (const name of ["main", "master", "dev", "develop", "trunk", "release/1.2.0"]) {
+  for (const name of ["main", "master", "dev", "develop", "trunk"]) {
     const r = validateBranch(name);
     assert.equal(r.valid, true, `${name}: ${r.problems.join("; ")}`);
     assert.ok(r.warnings.some((w) => /base branch/.test(w)));
   }
+});
+
+test("branch: release is a typed branch with a version-style description", () => {
+  for (const name of ["release/1.2.0", "release/2.0.0-rc1", "release/2024-q1", "release/1-2-0"]) {
+    const r = validateBranch(name);
+    assert.equal(r.valid, true, `${name}: ${r.problems.join("; ")}`);
+    // typed, NOT exempt — so no base-branch note
+    assert.ok(!r.warnings.some((w) => /base branch/.test(w)), `${name} should not be exempt`);
+  }
+  // uppercase / underscore are still rejected for release
+  assert.ok(validateBranch("release/Prep_2.0").problems.some((p) => /lowercase version-style/.test(p)));
+  assert.ok(validateBranch("release/1_2_0").problems.some((p) => /hyphens, not spaces or underscores/.test(p)));
+});
+
+test("branch: dots are allowed only for release, not other types", () => {
+  assert.equal(validateBranch("release/1.2.0").valid, true);
+  const r = validateBranch("feat/add.dark");
+  assert.equal(r.valid, false);
+  assert.ok(r.problems.some((p) => /kebab-case/.test(p)));
 });
 
 test("branch: over-length name is a warning, not a failure", () => {

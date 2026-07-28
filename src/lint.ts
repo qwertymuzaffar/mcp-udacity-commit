@@ -15,7 +15,8 @@ export const BRANCH_MAX = 50;
 
 /**
  * Long-lived / protected branches that are exempt from the feature-branch
- * `type/description` rule. `release/*` is handled separately by prefix.
+ * `type/description` rule. `release/*` is NOT here — it is validated as a
+ * typed branch with a version-style description (e.g. `release/1.2.0`).
  */
 export const BASE_BRANCHES = new Set<string>(["main", "master", "dev", "develop", "trunk"]);
 
@@ -28,6 +29,13 @@ export const TYPES: Record<string, string> = {
   test: "Adding tests, refactoring tests; no production code change",
   chore: "Updating build tasks, package configs, etc; no production code change",
 };
+
+/**
+ * Types allowed as a branch prefix: the commit types plus `release`, which is
+ * a branch-only type (release branches are named, not committed). `release`
+ * takes a version-style description; every other type takes kebab-case.
+ */
+export const BRANCH_TYPES = [...Object.keys(TYPES), "release"];
 
 /** Footer keywords recognized for issue-reference validation. */
 export const FOOTER_KEYS = ["Resolves", "Closes", "Fixes", "Fix", "See also", "Refs", "Ref"];
@@ -108,10 +116,12 @@ same commit \`type\` set.
     type/kebab-case-description
 
 ## Rules
-- \`type/\` prefix — one of: ${Object.keys(TYPES).join(", ")}
+- \`type/\` prefix — one of: ${BRANCH_TYPES.join(", ")}
 - A single \`/\` separates the type from the description
 - Description is **kebab-case**: lowercase letters and digits joined by single
   hyphens (\`feat/add-dark-mode\`, not \`feat/Add_Dark_Mode\`)
+- \`release/\` branches take a **version-style** description instead: lowercase
+  words/digits joined by dots or hyphens (\`release/1.2.0\`, \`release/2024-q1\`)
 - No spaces, underscores, uppercase, or leading/trailing/double hyphens
 - Keep it short — ${BRANCH_MAX} characters or fewer (a hint, not a hard limit)
 
@@ -119,8 +129,9 @@ same commit \`type\` set.
 - \`feat/add-dark-mode\`
 - \`fix/duplicate-auth-refresh\`
 - \`chore/bump-deps\`
+- \`release/1.2.0\`
 
-Base branches (${[...BASE_BRANCHES].join(", ")}, \`release/*\`) are exempt.
+Base branches (${[...BASE_BRANCHES].join(", ")}) are exempt.
 `;
 
 /** Length in Unicode code points (not UTF-16 code units). */
@@ -269,9 +280,16 @@ export function formatMessage(input: FormatInput): { message: string; report: Re
 const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
 /**
+ * Version-style (for `release/` branches): lowercase words/digits joined by
+ * dots or hyphens, so `1.2.0`, `2.0.0-rc1`, and `2024-q1` all pass.
+ */
+const RELEASE_DESC = /^[a-z0-9]+([.-][a-z0-9]+)*$/;
+
+/**
  * Validate a git branch name against the companion `type/kebab-case`
- * convention. Base/long-lived branches (main, master, …, release/*) are
- * accepted as-is with a note, since the feature-branch rule doesn't apply.
+ * convention. Base/long-lived branches (main, master, dev, develop, trunk)
+ * are accepted as-is with a note. `release/` is a typed branch and takes a
+ * version-style description (e.g. `release/1.2.0`).
  */
 export function validateBranch(name: string): Report {
   const problems: string[] = [];
@@ -286,7 +304,8 @@ export function validateBranch(name: string): Report {
   }
 
   // Base / long-lived branches are exempt from the feature-branch rule.
-  if (BASE_BRANCHES.has(branch) || /^release\/.+/.test(branch)) {
+  // (`release/*` is NOT exempt — it is validated as a typed branch below.)
+  if (BASE_BRANCHES.has(branch)) {
     warnings.push(`"${branch}" is a base branch — feature-branch naming rules don't apply.`);
     return { valid: problems.length === 0, problems, warnings };
   }
@@ -300,9 +319,13 @@ export function validateBranch(name: string): Report {
   const type = branch.slice(0, slash);
   const description = branch.slice(slash + 1);
 
-  if (!TYPES[type]) {
-    problems.push(`Unknown type "${type}". Use one of: ${Object.keys(TYPES).join(", ")}.`);
+  if (!BRANCH_TYPES.includes(type)) {
+    problems.push(`Unknown type "${type}". Use one of: ${BRANCH_TYPES.join(", ")}.`);
   }
+
+  // `release/` takes a version-style description; every other type is kebab-case.
+  const isRelease = type === "release";
+  const pattern = isRelease ? RELEASE_DESC : KEBAB;
 
   if (!description) {
     problems.push("Description after the type is empty.");
@@ -310,12 +333,18 @@ export function validateBranch(name: string): Report {
     problems.push(
       `Use a single "/" after the type; the description must not contain "/". Got: "${description}".`
     );
-  } else if (!KEBAB.test(description)) {
-    // Give the most specific reason we can, else a general kebab-case message.
+  } else if (!pattern.test(description)) {
+    // Give the most specific reason we can, else a general shape message.
     if (/[A-Z]/.test(description)) {
-      problems.push(`Description must be lowercase kebab-case. Got: "${description}".`);
+      problems.push(
+        `Description must be lowercase ${isRelease ? "version-style (e.g. 1.2.0)" : "kebab-case"}. Got: "${description}".`
+      );
     } else if (/[_ ]/.test(description)) {
       problems.push("Use hyphens, not spaces or underscores, to separate words.");
+    } else if (isRelease) {
+      problems.push(
+        `Release description must be version-style: lowercase words/digits joined by dots or hyphens (e.g. "1.2.0", "2024-q1"). Got: "${description}".`
+      );
     } else {
       problems.push(
         `Description must be kebab-case: lowercase words joined by single hyphens. Got: "${description}".`
