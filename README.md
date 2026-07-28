@@ -51,7 +51,7 @@ claude mcp add udacity-commit -- node "$(pwd)/build/index.js"
 | Resource | `udacity://branch-naming` | The companion `type/kebab-case` branch-naming rules, as markdown |
 | Tool | `validate_commit_message` | Checks a message against every rule (type, ≤50-char subject, capitalization, no trailing period, blank line, ≤72-char body wrap) |
 | Tool | `format_commit_message` | Builds a compliant message from `type` + `subject` + optional `body`/`footer` |
-| Tool | `validate_branch_name` | Checks a branch name against the companion `type/kebab-case` convention (e.g. `feat/add-dark-mode`); base branches like `main` are exempt |
+| Tool | `validate_branch_name` | Checks a branch name against the companion `type/kebab-case` convention (e.g. `feat/add-dark-mode`); `release/*` is a typed branch with a version-style description (`release/1.2.0`), and base branches like `main` are exempt |
 
 ## Example
 
@@ -84,8 +84,9 @@ Resolves: #142
 
 ```text
 "feat/add-dark-mode"     →  ✅ Compliant branch name.
+"release/1.2.0"          →  ✅ Compliant branch name.
 "Feature/Add_Dark_Mode"  →  ❌ Not compliant.
-  • Unknown type "Feature". Use one of: feat, fix, docs, style, refactor, test, chore.
+  • Unknown type "Feature". Use one of: feat, fix, docs, style, refactor, test, chore, release.
   • Description must be lowercase kebab-case. Got: "Add_Dark_Mode".
 "main"                   →  ✅ (base branch — feature-branch rules don't apply)
 ```

@@ -5,7 +5,7 @@ import { z } from "zod";
 
 import { STYLE_GUIDE, BRANCH_GUIDE, validate, formatMessage, validateBranch } from "./lint.js";
 
-const VERSION = "1.1.0";
+const VERSION = "1.2.0";
 
 export function createServer(): McpServer {
   const server = new McpServer({ name: "udacity-commit", version: VERSION });
