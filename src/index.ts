@@ -47,16 +47,16 @@ export function createServer(): McpServer {
       },
     },
     async ({ message }) => {
-      const r = validate(message);
+      const report = validate(message);
       const text = [
-        r.valid ? "✅ Compliant with the Udacity style guide." : "❌ Not compliant.",
-        ...r.problems.map((p) => `  • ${p}`),
-        ...r.warnings.map((w) => `  ⚠ ${w}`),
+        report.valid ? "✅ Compliant with the Udacity style guide." : "❌ Not compliant.",
+        ...report.problems.map((problem) => `  • ${problem}`),
+        ...report.warnings.map((warning) => `  ⚠ ${warning}`),
       ].join("\n");
       const structuredContent: Record<string, unknown> = {
-        valid: r.valid,
-        problems: r.problems,
-        warnings: r.warnings,
+        valid: report.valid,
+        problems: report.problems,
+        warnings: report.warnings,
       };
       return { content: [{ type: "text", text }], structuredContent };
     }
@@ -118,16 +118,16 @@ export function createServer(): McpServer {
       },
     },
     async ({ name }) => {
-      const r = validateBranch(name);
+      const report = validateBranch(name);
       const text = [
-        r.valid ? "✅ Compliant branch name." : "❌ Not compliant.",
-        ...r.problems.map((p) => `  • ${p}`),
-        ...r.warnings.map((w) => `  ⚠ ${w}`),
+        report.valid ? "✅ Compliant branch name." : "❌ Not compliant.",
+        ...report.problems.map((problem) => `  • ${problem}`),
+        ...report.warnings.map((warning) => `  ⚠ ${warning}`),
       ].join("\n");
       const structuredContent: Record<string, unknown> = {
-        valid: r.valid,
-        problems: r.problems,
-        warnings: r.warnings,
+        valid: report.valid,
+        problems: report.problems,
+        warnings: report.warnings,
       };
       return { content: [{ type: "text", text }], structuredContent };
     }
@@ -141,7 +141,7 @@ async function main(): Promise<void> {
   await server.connect(new StdioServerTransport());
 }
 
-main().catch((err) => {
-  console.error(err);
+main().catch((error) => {
+  console.error(error);
   process.exit(1);
 });

@@ -85,7 +85,7 @@ A commit message has three parts separated by blank lines: **subject**, optional
 
 ## Types
 ${Object.entries(TYPES)
-  .map(([t, d]) => `- **${t}**: ${d}`)
+  .map(([typeName, typeDescription]) => `- **${typeName}**: ${typeDescription}`)
   .join("\n")}
 
 ## Subject
@@ -135,14 +135,14 @@ Base branches (${[...BASE_BRANCHES].join(", ")}) are exempt.
 `;
 
 /** Length in Unicode code points (not UTF-16 code units). */
-export function width(s: string): number {
-  return [...s].length;
+export function width(text: string): number {
+  return [...text].length;
 }
 
 /** Uppercase the first code point of a string (astral-safe). */
-function capitalizeFirst(s: string): string {
-  const chars = [...s];
-  if (chars.length === 0) return s;
+function capitalizeFirst(text: string): string {
+  const chars = [...text];
+  if (chars.length === 0) return text;
   return chars[0].toUpperCase() + chars.slice(1).join("");
 }
 
@@ -204,21 +204,21 @@ export function validate(message: string): Report {
   const rawSubject = lines[0] ?? "";
   const subject = rawSubject.replace(/\s+$/, "");
 
-  const m = subject.match(/^(\w+): (.*)$/);
-  if (!m) {
+  const subjectMatch = subject.match(/^(\w+): (.*)$/);
+  if (!subjectMatch) {
     problems.push(`Subject must follow "type: Subject". Got: "${subject}".`);
   } else {
-    const [, type, rest] = m;
+    const [, type, subjectText] = subjectMatch;
     if (!TYPES[type]) {
       problems.push(`Unknown type "${type}". Use one of: ${Object.keys(TYPES).join(", ")}.`);
     }
-    if (!rest) {
+    if (!subjectText) {
       problems.push("Subject text is empty after the type.");
     } else {
-      if (/^\p{Ll}/u.test(rest)) {
-        problems.push(`Subject should begin with a capital letter (got "${[...rest][0]}").`);
+      if (/^\p{Ll}/u.test(subjectText)) {
+        problems.push(`Subject should begin with a capital letter (got "${[...subjectText][0]}").`);
       }
-      const firstWord = rest.split(/\s+/)[0];
+      const firstWord = subjectText.split(/\s+/)[0];
       if (NON_IMPERATIVE.has(firstWord.toLowerCase())) {
         warnings.push(
           `"${firstWord}" looks past-tense/gerund — use the imperative mood ("Add", not "Added").`
@@ -239,15 +239,15 @@ export function validate(message: string): Report {
     problems.push("Leave a blank line between the subject and the body.");
   }
 
-  for (let i = 2; i < lines.length; i++) {
-    const line = lines[i];
+  for (let lineIndex = 2; lineIndex < lines.length; lineIndex++) {
+    const line = lines[lineIndex];
     if (width(line) > BODY_WRAP) {
-      problems.push(`Line ${i + 1} is ${width(line)} chars; wrap body/footer at ${BODY_WRAP}.`);
+      problems.push(`Line ${lineIndex + 1} is ${width(line)} chars; wrap body/footer at ${BODY_WRAP}.`);
     }
-    const fm = line.match(/^([A-Za-z][A-Za-z ]*?):\s*(.*)$/);
-    if (fm && FOOTER_KEYS.some((k) => k.toLowerCase() === fm[1].toLowerCase())) {
-      if (!/#\d+/.test(fm[2])) {
-        warnings.push(`Footer "${fm[1]}" should reference an issue, e.g. "${fm[1]}: #123".`);
+    const footerMatch = line.match(/^([A-Za-z][A-Za-z ]*?):\s*(.*)$/);
+    if (footerMatch && FOOTER_KEYS.some((footerKey) => footerKey.toLowerCase() === footerMatch[1].toLowerCase())) {
+      if (!/#\d+/.test(footerMatch[2])) {
+        warnings.push(`Footer "${footerMatch[1]}" should reference an issue, e.g. "${footerMatch[1]}: #123".`);
       }
     }
   }
@@ -310,14 +310,14 @@ export function validateBranch(name: string): Report {
     return { valid: problems.length === 0, problems, warnings };
   }
 
-  const slash = branch.indexOf("/");
-  if (slash === -1) {
+  const slashIndex = branch.indexOf("/");
+  if (slashIndex === -1) {
     problems.push(`Branch must follow "type/description". Got: "${branch}".`);
     return { valid: false, problems, warnings };
   }
 
-  const type = branch.slice(0, slash);
-  const description = branch.slice(slash + 1);
+  const type = branch.slice(0, slashIndex);
+  const description = branch.slice(slashIndex + 1);
 
   if (!BRANCH_TYPES.includes(type)) {
     problems.push(`Unknown type "${type}". Use one of: ${BRANCH_TYPES.join(", ")}.`);
