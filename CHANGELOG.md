@@ -5,6 +5,13 @@ All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2026-07-31
+
+### Changed
+
+- Include `CHANGELOG.md` in the published npm package so the release
+  history ships alongside the code.
+
 ## [1.2.1] - 2026-07-31
 
 ### Changed
@@ -53,5 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `validate_commit_message` and `format_commit_message` tools and the
   `udacity://commit-styleguide` resource.
 
+[1.2.2]: https://github.com/qwertymuzaffar/mcp-udacity-commit/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/qwertymuzaffar/mcp-udacity-commit/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/qwertymuzaffar/mcp-udacity-commit/releases/tag/v1.2.0
