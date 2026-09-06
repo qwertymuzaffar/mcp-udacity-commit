@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.3
+
+### Patch Changes
+
+- e8eda7d: Releases are now automated with Changesets and published from GitHub Actions with provenance.
+
 All notable changes to this project are documented here.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
