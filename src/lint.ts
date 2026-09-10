@@ -190,18 +190,13 @@ export interface Report {
   warnings: string[];
 }
 
-/** Validate a full commit message against the Udacity style guide. */
-export function validate(message: string): Report {
-  const problems: string[] = [];
-  const warnings: string[] = [];
+/** A report is valid exactly when it has no problems; warnings never fail it. */
+function report(problems: string[], warnings: string[]): Report {
+  return { valid: problems.length === 0, problems, warnings };
+}
 
-  // Normalize CRLF / lone CR so line-based checks are reliable.
-  const normalized = message.replace(/\r\n?/g, "\n");
-  const lines = normalized.split("\n");
-  // Drop trailing blank lines (a trailing newline shouldn't count as a body).
-  while (lines.length > 1 && lines[lines.length - 1].trim() === "") lines.pop();
-
-  const rawSubject = lines[0] ?? "";
+/** The `type: Subject` line: shape, type, capitalization, mood, whitespace, period and length. */
+function checkSubject(rawSubject: string, problems: string[], warnings: string[]): void {
   const subject = rawSubject.replace(/\s+$/, "");
 
   const subjectMatch = subject.match(/^(\w+): (.*)$/);
@@ -234,11 +229,10 @@ export function validate(message: string): Report {
       `Subject line is ${width(subject)} chars (incl. the "type: " prefix); max is ${SUBJECT_MAX}.`
     );
   }
+}
 
-  if (lines.length > 1 && lines[1].trim() !== "") {
-    problems.push("Leave a blank line between the subject and the body.");
-  }
-
+/** Body and footer lines, from the third line on: wrap width and footer issue references. */
+function checkBodyLines(lines: string[], problems: string[], warnings: string[]): void {
   for (let lineIndex = 2; lineIndex < lines.length; lineIndex++) {
     const line = lines[lineIndex];
     if (width(line) > BODY_WRAP) {
@@ -251,8 +245,26 @@ export function validate(message: string): Report {
       }
     }
   }
+}
 
-  return { valid: problems.length === 0, problems, warnings };
+/** Validate a full commit message against the Udacity style guide. */
+export function validate(message: string): Report {
+  const problems: string[] = [];
+  const warnings: string[] = [];
+
+  // Normalize CRLF / lone CR so line-based checks are reliable.
+  const normalized = message.replace(/\r\n?/g, "\n");
+  const lines = normalized.split("\n");
+  // Drop trailing blank lines (a trailing newline shouldn't count as a body).
+  while (lines.length > 1 && lines[lines.length - 1].trim() === "") lines.pop();
+
+  checkSubject(lines[0] ?? "", problems, warnings);
+  if (lines.length > 1 && lines[1].trim() !== "") {
+    problems.push("Leave a blank line between the subject and the body.");
+  }
+  checkBodyLines(lines, problems, warnings);
+
+  return report(problems, warnings);
 }
 
 export interface FormatInput {
@@ -285,6 +297,46 @@ const KEBAB = /^[a-z0-9]+(-[a-z0-9]+)*$/;
  */
 const RELEASE_DESC = /^[a-z0-9]+([.-][a-z0-9]+)*$/;
 
+/** Why a description is not acceptable for its branch type, as specifically as possible; null when it is. */
+function descriptionProblem(description: string, isRelease: boolean): string | null {
+  if (!description) return "Description after the type is empty.";
+  if (description.includes("/")) {
+    return `Use a single "/" after the type; the description must not contain "/". Got: "${description}".`;
+  }
+  // `release/` takes a version-style description; every other type is kebab-case.
+  if ((isRelease ? RELEASE_DESC : KEBAB).test(description)) return null;
+  // Give the most specific reason we can, else a general shape message.
+  if (/[A-Z]/.test(description)) {
+    return `Description must be lowercase ${isRelease ? "version-style (e.g. 1.2.0)" : "kebab-case"}. Got: "${description}".`;
+  }
+  if (/[_ ]/.test(description)) return "Use hyphens, not spaces or underscores, to separate words.";
+  if (isRelease) {
+    return `Release description must be version-style: lowercase words/digits joined by dots or hyphens (e.g. "1.2.0", "2024-q1"). Got: "${description}".`;
+  }
+  return `Description must be kebab-case: lowercase words joined by single hyphens. Got: "${description}".`;
+}
+
+/** A `type/description` branch: the type, the description for that type, and the length hint. */
+function checkTypedBranch(branch: string, problems: string[], warnings: string[]): void {
+  const slashIndex = branch.indexOf("/");
+  if (slashIndex === -1) {
+    problems.push(`Branch must follow "type/description". Got: "${branch}".`);
+    return;
+  }
+
+  const type = branch.slice(0, slashIndex);
+  const description = branch.slice(slashIndex + 1);
+  if (!BRANCH_TYPES.includes(type)) {
+    problems.push(`Unknown type "${type}". Use one of: ${BRANCH_TYPES.join(", ")}.`);
+  }
+  const problem = descriptionProblem(description, type === "release");
+  if (problem) problems.push(problem);
+
+  if (width(branch) > BRANCH_MAX) {
+    warnings.push(`Branch name is ${width(branch)} chars; keep it ${BRANCH_MAX} or fewer.`);
+  }
+}
+
 /**
  * Validate a git branch name against the companion `type/kebab-case`
  * convention. Base/long-lived branches (main, master, dev, develop, trunk)
@@ -297,64 +349,16 @@ export function validateBranch(name: string): Report {
 
   const branch = name.trim();
   if (!branch) {
-    return { valid: false, problems: ["Branch name is empty."], warnings };
-  }
-  if (branch !== name) {
-    problems.push("Branch name has leading/trailing whitespace.");
-  }
-
-  // Base / long-lived branches are exempt from the feature-branch rule.
-  // (`release/*` is NOT exempt — it is validated as a typed branch below.)
-  if (BASE_BRANCHES.has(branch)) {
-    warnings.push(`"${branch}" is a base branch — feature-branch naming rules don't apply.`);
-    return { valid: problems.length === 0, problems, warnings };
-  }
-
-  const slashIndex = branch.indexOf("/");
-  if (slashIndex === -1) {
-    problems.push(`Branch must follow "type/description". Got: "${branch}".`);
-    return { valid: false, problems, warnings };
-  }
-
-  const type = branch.slice(0, slashIndex);
-  const description = branch.slice(slashIndex + 1);
-
-  if (!BRANCH_TYPES.includes(type)) {
-    problems.push(`Unknown type "${type}". Use one of: ${BRANCH_TYPES.join(", ")}.`);
-  }
-
-  // `release/` takes a version-style description; every other type is kebab-case.
-  const isRelease = type === "release";
-  const pattern = isRelease ? RELEASE_DESC : KEBAB;
-
-  if (!description) {
-    problems.push("Description after the type is empty.");
-  } else if (description.includes("/")) {
-    problems.push(
-      `Use a single "/" after the type; the description must not contain "/". Got: "${description}".`
-    );
-  } else if (!pattern.test(description)) {
-    // Give the most specific reason we can, else a general shape message.
-    if (/[A-Z]/.test(description)) {
-      problems.push(
-        `Description must be lowercase ${isRelease ? "version-style (e.g. 1.2.0)" : "kebab-case"}. Got: "${description}".`
-      );
-    } else if (/[_ ]/.test(description)) {
-      problems.push("Use hyphens, not spaces or underscores, to separate words.");
-    } else if (isRelease) {
-      problems.push(
-        `Release description must be version-style: lowercase words/digits joined by dots or hyphens (e.g. "1.2.0", "2024-q1"). Got: "${description}".`
-      );
+    problems.push("Branch name is empty.");
+  } else {
+    if (branch !== name) problems.push("Branch name has leading/trailing whitespace.");
+    if (BASE_BRANCHES.has(branch)) {
+      // Base / long-lived branches are exempt from the feature-branch rule.
+      // (`release/*` is NOT exempt - it is validated as a typed branch.)
+      warnings.push(`"${branch}" is a base branch — feature-branch naming rules don't apply.`);
     } else {
-      problems.push(
-        `Description must be kebab-case: lowercase words joined by single hyphens. Got: "${description}".`
-      );
+      checkTypedBranch(branch, problems, warnings);
     }
   }
-
-  if (width(branch) > BRANCH_MAX) {
-    warnings.push(`Branch name is ${width(branch)} chars; keep it ${BRANCH_MAX} or fewer.`);
-  }
-
-  return { valid: problems.length === 0, problems, warnings };
+  return report(problems, warnings);
 }
