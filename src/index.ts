@@ -1,11 +1,14 @@
 #!/usr/bin/env node
+import { createRequire } from "node:module";
+
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 
 import { STYLE_GUIDE, BRANCH_GUIDE, validate, formatMessage, validateBranch } from "./lint.js";
 
-const VERSION = "1.2.2";
+/** The published version, read from package.json so a release cannot leave it behind. */
+const { version: VERSION } = createRequire(import.meta.url)("../package.json") as { version: string };
 
 export function createServer(): McpServer {
   const server = new McpServer({ name: "udacity-commit", version: VERSION });

@@ -37,7 +37,7 @@
     "prepublishOnly": "npm test",
     "test:client": "node test-client.mjs",
     "changeset": "changeset",
-    "version-packages": "changeset version",
+    "version-packages": "changeset version && node scripts/sync-server-version.mjs",
     "release": "npm run build && changeset publish"
   },
   "dependencies": {
