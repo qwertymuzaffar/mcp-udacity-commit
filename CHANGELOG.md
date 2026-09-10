@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.4
+
+### Patch Changes
+
+- 8bbfd51: The server now reports the version from package.json instead of a hardcoded string that had stayed at 1.2.2, and `changeset version` keeps server.json in step with it.
+
 ## 1.2.3
 
 ### Patch Changes
